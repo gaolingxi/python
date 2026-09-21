@@ -1,0 +1,22 @@
+# Ignore everything by default
+*
+
+# Allow specific extensions only
+!*.ipynb
+!*.py
+!*.md
+!*.txt
+
+# Allow directories to be traversed (but not their non-matching files)
+!*/
+
+# Re-ignore specific junk even if extension matches
+**/__pycache__/**
+**/.ipynb_checkpoints/**
+**/.statamcp/**
+**/stata-mcp-folder/**
+**/.git/**
+**/node_modules/**
+
+!/README.md
+!/.gitignore

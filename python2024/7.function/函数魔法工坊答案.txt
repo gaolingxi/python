@@ -1,0 +1,84 @@
+1-1. 启蒙 (定义咒语)
+def cast_light():
+    print('Lumos!')
+1-2. 启蒙 (施放咒语)
+cast_light()
+2-1. 召唤阵 (形参)
+def summon(creature):
+    print(f'Summoning {creature}!')
+2-2. 召唤阵 (实参)
+summon('Dragon')
+3-1. 炼金转化 (返回值)
+def to_gold(weight):
+    return weight * 100
+3-2. 炼金转化 (鉴定)
+print(to_gold(5))
+4-1. 战地急救 (默认参数)
+def heal(name, hp=50):
+    return f'{name} recovered {hp} HP'
+4-2. 战地急救 (快速施法)
+print(heal('Arthur'))
+4-3. 战地急救 (强效)
+print(heal('Lancelot', 90))
+4-4. 战地急救 (精准 - 关键字参数)
+print(heal(hp=90, name='Lancelot'))
+5-1. 隐身迷雾 (局部变量)
+def vanish():
+    duration = 10
+    print(duration)
+5-2. 隐身迷雾 (原理)
+
+选择题答案：
+B. 局部变量随函数结束而销毁
+
+6-1. 禁咒：流星 (定义)
+def meteor():
+    global MANA
+    MANA -= 500
+
+6-2. 禁咒：流星 (毁灭)
+meteor()
+print(MANA)
+
+7-1. 定点传送
+print(teleport('Sky', 'Ground'))
+
+8-1. 无尽行囊 (定义)
+def inv(*items):
+    print(items)
+
+8-2. 无尽行囊 (装填)
+inv('Sword', 'Gem', 'Potion')
+
+9-1. 奇美拉合成 (定义)
+def chimera(**parts):
+    print(parts)
+
+9-2. 奇美拉合成 (创造)
+chimera(head='Lion', tail='Snake')
+
+10-1. 幻影分身
+clone = lambda x: x * 2
+
+11-1. 水晶共鸣 (公式)
+den = lambda s: 100 - 2 * s
+
+11-2. 水晶共鸣 (推导)
+energies = [s * den(s) for s in sizes]
+print(energies)
+
+12-1. 圣物鉴定 (公式)
+val = lambda old, new: new - old
+
+12-2. 圣物鉴定 (推导)
+gains = {k: val(v['old'], v['new']) for k, v in data.items()}
+print(gains)
+
+
+
+
+
+
+
+
+
