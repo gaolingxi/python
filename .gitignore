@@ -6,6 +6,7 @@
 !*.py
 !*.md
 !*.txt
+!/python2026/9.dataframe/成绩单_示例.csv
 
 # Allow directories to be traversed (but not their non-matching files)
 !*/
