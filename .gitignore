@@ -19,5 +19,16 @@
 **/.git/**
 **/node_modules/**
 
+# Embedded git repos (cause nested repo errors)
+python1/
+python2/
+
+# Student submissions (privacy: real names + student IDs)
+python2026/课堂测试1/
+
+# Temp scripts and compare files in courseware dir
+python2026/check_submission.py
+ch2_compare.txt
+
 !/README.md
 !/.gitignore
