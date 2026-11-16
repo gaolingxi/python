@@ -54,6 +54,24 @@ def write_csv(path, rows, fields):
 def noncomment(source):
     return "\n".join(x for x in source.splitlines() if x.strip() and not x.lstrip().startswith("#")).strip()
 
+def short_answer(source):
+    """选择/填空答案可能直接写成 # 你的答案：B，不能把注释式答题清空。"""
+    lines = source.splitlines()
+    values = []
+    for i, line in enumerate(lines):
+        found = re.search(r"(?:你的答案|答案)\s*[:：]\s*(.*)$", line)
+        if found:
+            tail = found.group(1).strip()
+            if tail:
+                values.append(tail)
+            elif i + 1 < len(lines):
+                candidate = lines[i + 1].strip()
+                if candidate and not candidate.startswith("#"):
+                    values.append(candidate)
+        elif line.strip() and not line.strip().startswith("#"):
+            values.append(line.strip())
+    return "\n".join(values).strip()
+
 def extract(nb):
     """题目 Markdown 所在区间中找答题代码；不按 code-cell 数量猜测，兼容身份额外 cell。"""
     cells = nb.get("cells", [])
@@ -77,7 +95,7 @@ def extract(nb):
                     break
         group = [(j, src(c)) for j, c in enumerate(cells[i + 1:end], i + 1)
                  if c.get("cell_type") == "code"]
-        cleaned = [t for _, t in group if noncomment(t)]
+        cleaned = [t for _, t in group if noncomment(t) or (k < 6 and short_answer(t))]
         answer = "\n".join(cleaned)
         answers.append({"source": answer, "heading": title.splitlines()[0],
                         "cells": [j for j, _ in group], "match": True})
@@ -145,7 +163,7 @@ def numeric_lines(stdout):
     return numbers
 
 def score_simple(q, text):
-    t = noncomment(text).strip()
+    t = short_answer(text).strip()
     normalized = norm(t).upper()
     if not normalized:
         return 0, "BLANK", "未作答"
@@ -163,7 +181,7 @@ def score_simple(q, text):
             return 0, "WRONG", "未包含引号，不能证明是字符串"
         return 0, "SEMANTIC_REVIEW", "字符串形式不明确，需要人工复核"
     if q == 5:
-        first = bool(re.search(r"相等|比较|关系|判断", t))
+        first = bool(re.search(r"相等|等于|比较|关系|判断", t))
         second = "赋值" in t
         score = (5 if first else 0) + (5 if second else 0)
         return score, "OK" if score == 10 else ("PARTIAL" if score else "WRONG"), "两空分别按5分"
@@ -344,8 +362,12 @@ def main():
             detail.append(detailed)
             scores.append(score)
             # 源文件与提取结果使用同一原始Notebook反读来源和SHA核对
-            original = answers[q]["source"]
-            matched = original == parsed["source"] and parsed["sha256"] == sha
+            # 按原始Notebooks实际cell索引再次拼接答题源内容，独立于提取结果做对账。
+            notebook, check_sha = data_file(CLASS / entry["path"])
+            original = "\n".join(src(notebook["cells"][j]) for j in answers[q]["cells"]
+                               if noncomment(src(notebook["cells"][j])) or
+                               (q < 6 and short_answer(src(notebook["cells"][j]))))
+            matched = original == parsed["source"] and parsed["sha256"] == check_sha
             source_audit.append({"folder":folder,"file":file,"question":q+1,
                                   "source_integrity":"PASS" if matched else "BLOCK",
                                   "source_chars":len(original), "extracted_chars":len(parsed["source"])})
@@ -359,7 +381,7 @@ def main():
                     audit.append({"folder":folder,"file":file,"question":q+1,
                                   "level":"BLOCK","finding":"FULL_MARK_STRUCTURAL_REVIEW",
                                   "comment":"满分代码含结构风险"})
-        valid_count = sum(bool(noncomment(x["source"])) for x in answers)
+        valid_count = sum(bool(short_answer(x["source"]) if j < 6 else noncomment(x["source"])) for j,x in enumerate(answers))
         score_total = sum(s for s in scores if s is not None)
         review = any(s is None for s in scores) or bool(entry["structure_issue"])
         file_summaries.append({"folder":folder,"file":file,"sha256":sha,"score":score_total,
