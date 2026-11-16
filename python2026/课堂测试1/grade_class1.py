@@ -433,6 +433,13 @@ def main():
     grouped = defaultdict(list)
     for item in file_summaries:
         grouped[item["folder"]].append(item)
+    # 结合仓库原有提交检查明细提供姓名（不以姓名猜测正确答案）。
+    name_map = {}
+    old_report = CLASS / "提交检查明细.csv"
+    if old_report.exists():
+        with old_report.open(encoding="utf-8-sig", newline="") as f:
+            for item in csv.DictReader(f):
+                name_map[item.get("文件夹", "")] = item.get("姓名", "")
     summary = []
     for folder, choices in sorted(grouped.items()):
         # 提交版本冲突需人工确认，临时按有效作答数最大版本供教师查阅，绝不静默覆盖
@@ -446,13 +453,15 @@ def main():
         if any(a["file"]==choice["file"] and a["folder"]==folder for a in audit):
             issues.append("AUDIT_REVIEW")
         summary.append({"folder":folder, "student_id_from_filename":student_id,
+                        "name_from_submission_report":name_map.get(folder,""),
                         "selected_file":choice["file"], "id_source":id_source, "file_count":len(choices),
                         "answered_questions":choice["valid_answers"],
                         "provisional_score":choice["score"], "max_score":100,
                         "status":"REVIEW_REQUIRED" if issues else "GRADED_PROVISIONAL",
                         "issues":";".join(issues),
                         **{f"Q{i+1}":v for i,v in enumerate(choice["q_scores"])}})
-    cols=["folder","student_id_from_filename","selected_file","id_source","file_count",
+    cols=["folder","student_id_from_filename","name_from_submission_report",
+          "selected_file","id_source","file_count",
           "answered_questions","provisional_score","max_score","status","issues"]+[
               f"Q{i}" for i in range(1,13)]
     write_csv(OUT/"grade_summary_provisional.csv",summary,cols)
