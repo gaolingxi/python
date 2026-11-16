@@ -58,7 +58,9 @@ def short_answer(source):
     """选择/填空答案可能直接写成 # 你的答案：B，不能把注释式答题清空。"""
     lines = source.splitlines()
     values = []
-    for i, line in enumerate(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         found = re.search(r"(?:你的答案|答案)\s*[:：]\s*(.*)$", line)
         if found:
             tail = found.group(1).strip()
@@ -68,8 +70,10 @@ def short_answer(source):
                 candidate = lines[i + 1].strip()
                 if candidate and not candidate.startswith("#"):
                     values.append(candidate)
+                    i += 1  # 已消费下一行，不再把C重复录入两次
         elif line.strip() and not line.strip().startswith("#"):
             values.append(line.strip())
+        i += 1
     return "\n".join(values).strip()
 
 def extract(nb):
@@ -108,7 +112,13 @@ def safety_check(code):
         tree = ast.parse(code)
     except SyntaxError:
         return "SYNTAX_ERROR"
-    denied = (ast.Import, ast.ImportFrom, ast.Global, ast.Nonlocal, ast.ClassDef,
+    # 精确允许decimal标准库，其余导入继续阻断，避免不可信作业访问系统。
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import) and any(a.name != "decimal" for a in n.names):
+            return "REVIEW_UNSAFE"
+        if isinstance(n, ast.ImportFrom) and n.module != "decimal":
+            return "REVIEW_UNSAFE"
+    denied = (ast.Global, ast.Nonlocal, ast.ClassDef,
               ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.With, ast.AsyncWith,
               ast.Try, ast.Raise, ast.Delete, ast.Yield, ast.YieldFrom)
     if any(isinstance(n, denied) for n in ast.walk(tree)):
@@ -222,6 +232,7 @@ def grade_code(q, code, runs):
             r"\b(?:principal|ben|money|p)\s*\*\s*(?:annual_rate|li|rate|r)\s*\*\s*(?:years|year|n)", t))
         # 更一般：至少有两次相乘且包含.034及5，可以认可变量命名等价
         interest_formula |= t.count("*") >= 2 and bool(re.search(r"\.034\b", t))
+        interest_formula |= "3.4" in t and "/100" in re.sub(r"\s+", "", t) and "*" in t
         total_formula = ("+" in t and (re.search(r"\b(?:interest|lixi|interesting|total|zhong|money)\b", t) or "10000" in t))
         val = (4 if interest_formula else 0) + (3 if total_formula else 0)
         line1 = any("1700" in v and ("利息" in v or "interest" in v.lower()) for v in outs[0].splitlines()) if ok else False
