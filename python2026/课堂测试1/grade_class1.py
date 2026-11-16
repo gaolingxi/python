@@ -211,7 +211,8 @@ def grade_code(q, code, runs):
         b1 = pairs(outs[1], 8, 2) if b_ok else False
         b2 = pairs(outs[1], 2, 8) if b_ok else False
         val = (3 if inp >= 2 else 0) + (2 if a1 else 0) + (3 if a2 else 0) + (2 if b1 and b2 else 0)
-        if not ok and swap:
+        if swap:
+            # 即使输出未按题意显示两列，也应保留正确交换算法的思路分。
             val = max(val, 2)
         if val == 10 and not swap and inp < 2:
             val = 8
@@ -232,9 +233,9 @@ def grade_code(q, code, runs):
             val = min(val, 5)
         note = "按单利计算式、总额公式、输出两项核验"
     elif q == 8:  # 运算符
-        has_ops = [bool(re.search(r"\b100\s*//\s*7\b", t)),
-                   bool(re.search(r"\b100\s*%\s*7\b", t)),
-                   bool(re.search(r"\b2\s*\*\*\s*10\b", t))]
+        # 允许先定义a=100、再print(a//7)等语义等价写法，
+        # 不得硬性要求把100和7直接写在同一表达式中。
+        has_ops = [("//" in t), ("%" in t), ("**" in t)]
         lines = numeric_lines(outs[0]) if ok else []
         vals = [x for _, nums in lines for x in nums]
         expected = ["14", "2", "1024"]
@@ -283,6 +284,26 @@ def data_file(path):
     raw = path.read_bytes()
     nb = json.loads(raw.decode("utf-8-sig"))
     return nb, hashlib.sha256(raw).hexdigest()
+
+def identify_student(path):
+    filename = path.name
+    from_filename = re.findall(r"20\d{11}", filename)
+    if from_filename:
+        return from_filename[0], "FILENAME"
+    try:
+        notebook, _ = data_file(path)
+        before_questions = []
+        for c in notebook.get("cells", []):
+            if src(c).startswith("### 1."):
+                break
+            before_questions.append(src(c))
+        ids = re.findall(r"(?<!\d)20\d{11}(?!\d)", "\n".join(before_questions))
+        ids = sorted(set(ids))
+        if len(ids) == 1:
+            return ids[0], "NOTEBOOK_BODY"
+        return "", "AMBIGUOUS_ID" if ids else "NO_ID"
+    except Exception:
+        return "", "FILE_UNREADABLE"
 
 def rubric_lock():
     path = OUT / "rubric.lock.json"
@@ -405,22 +426,22 @@ def main():
     for folder, choices in sorted(grouped.items()):
         # 提交版本冲突需人工确认，临时按有效作答数最大版本供教师查阅，绝不静默覆盖
         choice = sorted(choices, key=lambda x:(x["valid_answers"],x["score"]),reverse=True)[0]
-        m = re.search(r"20\d{11}",choice["file"])
-        student_id = m.group(0) if m else ""
+        student_id, id_source = identify_student(CLASS / choice["path"])
         issues = []
         if len(choices)>1: issues.append("MULTIPLE_SUBMISSIONS")
-        if not student_id: issues.append("IDENTITY_MISSING_OR_IN_FILE_ONLY")
+        if not student_id: issues.append("IDENTITY_MISSING")
+        if id_source == "NOTEBOOK_BODY": issues.append("IDENTITY_FROM_BODY")
         if choice["review"]: issues.append("STRUCTURE_REVIEW")
         if any(a["file"]==choice["file"] and a["folder"]==folder for a in audit):
             issues.append("AUDIT_REVIEW")
         summary.append({"folder":folder, "student_id_from_filename":student_id,
-                        "selected_file":choice["file"], "file_count":len(choices),
+                        "selected_file":choice["file"], "id_source":id_source, "file_count":len(choices),
                         "answered_questions":choice["valid_answers"],
                         "provisional_score":choice["score"], "max_score":100,
                         "status":"REVIEW_REQUIRED" if issues else "GRADED_PROVISIONAL",
                         "issues":";".join(issues),
                         **{f"Q{i+1}":v for i,v in enumerate(choice["q_scores"])}})
-    cols=["folder","student_id_from_filename","selected_file","file_count",
+    cols=["folder","student_id_from_filename","selected_file","id_source","file_count",
           "answered_questions","provisional_score","max_score","status","issues"]+[
               f"Q{i}" for i in range(1,13)]
     write_csv(OUT/"grade_summary_provisional.csv",summary,cols)
