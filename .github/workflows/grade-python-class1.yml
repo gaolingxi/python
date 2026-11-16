@@ -1,0 +1,32 @@
+name: Grade Python Quiz 1 - Class 1 (provisional)
+
+on:
+  push:
+    paths:
+      - ".github/workflows/grade-python-class1.yml"
+      - "python2026/课堂测试1/grade_class1.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run all submissions then extract, grade and audit
+        run: python "python2026/课堂测试1/grade_class1.py"
+      - name: Upload grading evidence for teacher review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-class1-grading-review
+          path: python2026/课堂测试1/班级 1/批改结果/
+          retention-days: 30
+          if-no-files-found: warn
