@@ -23,8 +23,8 @@
 python1/
 python2/
 
-# Student submissions (privacy: real names + student IDs)
-python2026/课堂测试1/
+# Allow the CSV summary inside 课堂测试1 (submission report)
+!python2026/课堂测试1/**/*.csv
 
 # Temp scripts and compare files in courseware dir
 python2026/check_submission.py
