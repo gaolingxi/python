@@ -454,7 +454,7 @@ def main():
                 try:
                     original_bytes = source_file.read_bytes()
                     exact_hash = hashlib.sha256(original_bytes).hexdigest()
-                    if exact_hash == item["sha"]:
+                    if exact_hash == item["sha256"]:
                         mtime_ns = source_file.stat().st_mtime_ns
                         check = "ORIGINAL_MTIME_VERIFIED"
                     else:
@@ -476,7 +476,7 @@ def main():
         for item, ts, check in timestamps:
             evidence.append({
                 "folder": folder, "file": item["file"], "path": item["path"],
-                "sha256": item["sha"], "original_mtime_ns": ts if ts is not None else "",
+                "sha256": item["sha256"], "original_mtime_ns": ts if ts is not None else "",
                 "mtime_validation": check,
                 "selected": bool(choice and item["file"] == choice["file"]),
                 "selection_status": choice_state,
