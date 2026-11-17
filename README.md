@@ -31,3 +31,8 @@
 ## 许可
 
 课程内部资料，仅供教学使用。
+
+
+## OpenCode 自动领取
+
+`D:\课程\python` 通过 [Orca Chat checker](automation/CHAT_CHECKER.md) 每10分钟检查 GitHub 新任务；当前没有待执行任务时保持空闲。

@@ -22,6 +22,10 @@
 下一步：ChatGPT / OpenCode / PI / 用户
 你现在要做：具体操作
 
+## Orca Chat 自动领取（2026-11-17）
+
+`D:\课程\python` 已接入每10分钟一次的 GitHub checker，采用 Orca 原生 **Chat** 而非终端领取；必须有新 `TASK_ID` 且 `STATUS=READY/PENDING`、`EXECUTOR=OPENCODE`、`NEXT_ACTOR=OPENCODE`、`AUTOMATION_READY=YES`、无人工审核才自动启动。安装当天 `TASK_ID=NONE`，**绝不能擅自生成科研/教学任务**。完整操作见 [checker协议](automation/CHAT_CHECKER.md)；课程答案和成绩不可外传。
+
 ## Python 2026 作业命题规则（第4章及以后）
 
 - 选择题与填空题重点考查**程序设计、条件/循环逻辑、边界处理、代码补全与错误识别**；不要出“直接运行已给代码，看输出是什么”就能回答的题。考试提供可运行的验证环境，不依赖机械猜输出鉴别学生能力。
