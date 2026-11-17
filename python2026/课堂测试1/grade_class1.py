@@ -477,8 +477,17 @@ def main():
         elif all(t is not None and state == "ORIGINAL_MTIME_VERIFIED" for _, t, state in timestamps):
             latest = max(t for _, t, _ in timestamps)
             found = [x for x, t, _ in timestamps if t == latest]
-            choice = found[0] if len(found) == 1 else None
-            choice_state = "LATEST_MTIME_VERIFIED" if choice else "LATEST_MTIME_TIE"
+            if len(found) == 1:
+                choice = found[0]
+                choice_state = "LATEST_MTIME_VERIFIED"
+            elif len({x["sha256"] for x in found}) == 1:
+                # Multiple names share the latest timestamp, but their content is identical.
+                # Any copy gives precisely the same 12 answers and score. Pick a stable name.
+                choice = sorted(found, key=lambda x: x["file"])[0]
+                choice_state = "LATEST_MTIME_TIE_SAME_CONTENT"
+            else:
+                choice = None
+                choice_state = "LATEST_MTIME_TIE_DIFFERENT_CONTENT"
         else:
             choice = None
             choice_state = "LATEST_UNVERIFIABLE"
@@ -553,7 +562,7 @@ def main():
 不能仅根据关键词直接判满分。未把学生保存的旧输出作为证据。
 
 ## 待人工复核
-- 同文件夹多版本：必须依据原始收卷文件的真实修改时间(st_mtime_ns)，并逐一用SHA256核对原始字节。时间戳相等或无法取得时不选择；绝不按答案数、分数、文件名或Git上传时间冒充“最新版”。
+- 同文件夹多版本：依据原始收卷文件的真实修改时间(st_mtime_ns)，逐一按仅统一换行符的SHA256严格核对。时间戳相等时若所有并列最新版内容哈希相同，选其中任一份作为等价最新版并留存证据；若哈希不同才不选。绝不按答案数、分数、文件名或Git上传时间冒充“最新版”。
 - 学号只在Notebook正文、文件名缺失：标身份待核。
 - Python代码含语法错、异常、非标准文件结构：需核对原始答案与评分点。
 - 自动结构审核并不替代教师对满分代码的核实。
