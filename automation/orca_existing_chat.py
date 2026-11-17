@@ -144,3 +144,38 @@ def send(repo, prepared, message):
         os.replace(tmp,pin)
     return {"chat_outcome":"existing","session_id":prepared["session_id"],
             "chat_admission":receipt}
+
+
+def main():
+    """CLI adapter for Windows PowerShell checkers; safe before claim reservation."""
+    import argparse
+    import sys
+    parser=argparse.ArgumentParser()
+    parser.add_argument("action",choices=["prepare","send"])
+    parser.add_argument("--repo",required=True)
+    parser.add_argument("--workspace",required=True)
+    parser.add_argument("--session")
+    parser.add_argument("--prompt-file")
+    args=parser.parse_args()
+    try:
+        if args.action=="prepare":
+            value=prepare(Path(args.repo),Path(args.workspace))
+            result={"status":"READY_EXISTING_CHAT",**value}
+        else:
+            if not args.session or not args.prompt_file:
+                raise ChatUnavailable("SESSION_AND_PROMPT_FILE_REQUIRED")
+            target={"session_id":args.session,"workspace":str(Path(args.workspace).resolve())}
+            message=Path(args.prompt_file).read_text(encoding="utf-8-sig")
+            sent=send(Path(args.repo),target,message)
+            result={"status":"EXISTING_CHAT_MESSAGED",**sent}
+        print(json.dumps(result,ensure_ascii=False))
+        return 0
+    except ChatUnavailable as exc:
+        print(json.dumps({"status":"WAIT_EXISTING_ORCA_CHAT","reason":str(exc)}))
+        return 2
+    except ChatDeliveryUnconfirmed as exc:
+        print(json.dumps({"status":"CHAT_SEND_UNCONFIRMED","reason":str(exc)}))
+        return 3
+
+if __name__=="__main__":
+    raise SystemExit(main())
