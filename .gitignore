@@ -32,3 +32,6 @@ ch2_compare.txt
 
 !/README.md
 !/.gitignore
+
+# Private class grading outputs: never publish student grades to the public repository
+python2026/课堂测试1/班级 1/批改结果/
