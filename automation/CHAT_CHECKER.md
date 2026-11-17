@@ -1,3 +1,5 @@
+> **2026-11-17 更新：禁止自动创建新的 Orca Chat。** 只有检测到当前 Orca CLI 提供 `chat list/send`、并找到此项目已存在且空闲的 OpenCode Chat 时，checker 才将新任务继续发送到该 Chat；复用后固定会话ID。当前 Orca 1.4.261 尚未提供这些命令，因此新任务显示 `WAIT_EXISTING_ORCA_CHAT` 并继续检查，但绝不新建窗口，也不把未投递任务标记为已领取。无需运行 headless OpenCode。原下文每任务新建 Chat 的描述为历史方案。
+
 # Python 课程：GitHub → Orca Chat 自动领取
 
 **2026-11-17 新增。** 项目工作树：`D:\课程\python`，远端：`gaolingxi/python`。

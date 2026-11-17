@@ -44,10 +44,11 @@ class ChatCheckerTests(unittest.TestCase):
             root = Path(tmp)
             a, b = self.wrap(root, snap())
             with a, b, mock.patch.object(w, "registered_workspace"), \
+                 mock.patch.object(w, "prepare_chat", return_value={"session_id":"fixture","workspace":"fixture"}), \
                  mock.patch.object(w, "launch_chat", return_value={"chat_outcome": "chat"}) as launch:
                 self.assertEqual(w.check_once(root)["status"], "BASELINE_SET_NO_EXECUTION")
                 with mock.patch.object(w, "snapshot", return_value=snap("NEXT")):
-                    self.assertEqual(w.check_once(root)["status"], "CHAT_LAUNCHED")
+                    self.assertEqual(w.check_once(root)["status"], "EXISTING_CHAT_MESSAGED")
                     self.assertEqual(w.check_once(root)["status"], "ALREADY_CLAIMED_OR_UNCONFIRMED")
                 self.assertEqual(launch.call_count, 1)
 
@@ -59,6 +60,7 @@ class ChatCheckerTests(unittest.TestCase):
                 w.check_once(root)
                 with mock.patch.object(w, "snapshot", return_value=snap("NEXT")), \
                      mock.patch.object(w, "registered_workspace"), \
+                     mock.patch.object(w, "prepare_chat", return_value={"session_id":"fixture","workspace":"fixture"}), \
                      mock.patch.object(w, "launch_chat", side_effect=RuntimeError("unconfirmed")) as launch:
                     with self.assertRaisesRegex(RuntimeError, "unconfirmed"):
                         w.check_once(root)

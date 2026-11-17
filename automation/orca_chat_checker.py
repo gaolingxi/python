@@ -9,6 +9,7 @@ stay under .git, not in course materials or student-visible paths.
 from __future__ import annotations
 
 import argparse
+from orca_existing_chat import ChatUnavailable, prepare as prepare_chat, send as send_chat
 import hashlib
 import json
 import os
@@ -192,21 +193,15 @@ def registered_workspace(repo: Path) -> None:
         raise CheckerFailure("ORCA_PROJECT_ID_MISMATCH")
 
 
-def launch_chat(repo: Path, task_id: str) -> dict[str, str]:
+def launch_chat(repo: Path, task_id: str, target: dict[str, str] | None = None) -> dict[str, str]:
     prompt = (
         "继续。只领取 GitHub gaolingxi/python 的最新任务 TASK_ID=" + task_id
         + "。先安全 git pull --ff-only，核对 AGENTS.md、OPENCODE_TASK.md、"
           "AUTOMATION_READY 与 NEXT_ACTOR；任务已完成、发生冲突或需人工审核时停止。"
           "不得覆盖教师答案或学生成绩，不要重跑旧任务。"
     )
-    result = orca(repo, [
-        "agent", "launch", "--agent", "opencode",
-        "--worktree", f"path:{repo}", "--surface", "chat", "--prompt", prompt,
-    ], timeout=60)
-    kind = str((result.get("outcome") or {}).get("kind") or "")
-    if "chat" not in kind.lower():
-        raise CheckerFailure(f"ORCA_NOT_NATIVE_CHAT: {kind or 'UNKNOWN'}")
-    return {"chat_outcome": kind, "session_id": str(result.get("sessionId") or "")}
+    target = target or prepare_chat(repo, repo)
+    return send_chat(repo, target, prompt)
 
 
 def check_once(repo: Path = ROOT, *, check_only: bool = False, doctor: bool = False) -> dict[str, Any]:
@@ -249,6 +244,11 @@ def check_once(repo: Path = ROOT, *, check_only: bool = False, doctor: bool = Fa
                     "task_id": snap["task_id"],
                     "claim_status": launched[snap["task_id"]]["status"]}
         registered_workspace(repo)
+        try:
+            target = prepare_chat(repo, repo)
+        except ChatUnavailable as exc:
+            return {"status": "WAIT_EXISTING_ORCA_CHAT", "reason": str(exc),
+                    "task_id": snap["task_id"]}
         # Reserve on disk BEFORE side effects. Transport errors are ambiguous.
         launched[snap["task_id"]] = {
             "status": "LAUNCH_UNCONFIRMED", "reserved_at": now(),
@@ -256,7 +256,7 @@ def check_once(repo: Path = ROOT, *, check_only: bool = False, doctor: bool = Fa
         }
         atomic_json(state_path, state)
         try:
-            result = launch_chat(repo, snap["task_id"])
+            result = launch_chat(repo, snap["task_id"], target)
         except Exception as exc:
             log_event(repo, "CHAT_LAUNCH_UNCONFIRMED", task_id=snap["task_id"],
                       error=str(exc))
@@ -265,8 +265,8 @@ def check_once(repo: Path = ROOT, *, check_only: bool = False, doctor: bool = Fa
             status="CHAT_LAUNCHED", delivered_at=now(), **result,
         )
         atomic_json(state_path, state)
-        log_event(repo, "CHAT_LAUNCHED", task_id=snap["task_id"], **result)
-        return {"status": "CHAT_LAUNCHED", "task_id": snap["task_id"], **result}
+        log_event(repo, "EXISTING_CHAT_MESSAGED", task_id=snap["task_id"], **result)
+        return {"status": "EXISTING_CHAT_MESSAGED", "task_id": snap["task_id"], **result}
     finally:
         lock.unlink(missing_ok=True)
 
