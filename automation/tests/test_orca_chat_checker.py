@@ -75,14 +75,16 @@ class ChatCheckerTests(unittest.TestCase):
                 self.assertEqual(w.check_once(root,doctor=True)["status"],"DOCTOR_READY")
                 launch.assert_not_called()
 
-    def test_only_native_chat_accepted(self):
-        with mock.patch.object(w, "orca", return_value={"outcome":{"kind":"terminal"}}):
-            with self.assertRaisesRegex(w.CheckerFailure, "NOT_NATIVE_CHAT"):
-                w.launch_chat(Path("D:/course/python"), "T2")
-        with mock.patch.object(w, "orca", return_value={"outcome":{"kind":"chat"},"sessionId":"ok"}) as method:
-            result=w.launch_chat(Path("D:/course/python"),"T2")
-            self.assertEqual(result["chat_outcome"],"chat")
-            self.assertEqual(method.call_args.args[1][method.call_args.args[1].index("--surface")+1],"chat")
+    def test_existing_chat_sender_is_used_without_launch(self):
+        target = {"session_id": "existing-session", "workspace": "D:/course/python"}
+        with mock.patch.object(w, "send_chat",
+                               return_value={"chat_outcome": "existing",
+                                             "session_id": "existing-session",
+                                             "chat_admission": "submitted"}) as send:
+            result = w.launch_chat(Path("D:/course/python"), "T2", target)
+        self.assertEqual(result["chat_outcome"], "existing")
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(send.call_args.args[1], target)
 
 
 if __name__ == "__main__":
