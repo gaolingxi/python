@@ -35,3 +35,13 @@ ch2_compare.txt
 
 # Private class grading outputs: never publish student grades to the public repository
 python2026/课堂测试1/班级 1/批改结果/
+
+# Local private scoring audit scripts (may contain folder-to-score adjudications)
+python2026/课堂测试1/audit_process_all.py
+python2026/课堂测试1/audit_process_v2.py
+python2026/课堂测试1/audit_digest.py
+python2026/课堂测试1/print_auto_selected.py
+python2026/课堂测试1/write_review_digest.py
+python2026/课堂测试1/objective_semantic_digest.py
+python2026/课堂测试1/manual_process_review.py
+python2026/课堂测试1/semantic_final_adjustment.py
