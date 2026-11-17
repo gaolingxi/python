@@ -18,6 +18,8 @@ import sys
 import statistics
 from collections import Counter, defaultdict
 
+# Original/Git verification: SHA256 is computed after normalizing only CRLF to LF.
+# This is necessary when Git on Windows checks out CRLF while source files are LF.
 ROOT = Path(__file__).resolve().parent
 CLASS = ROOT / "班级 1"
 OUT = CLASS / "批改结果"
@@ -291,10 +293,17 @@ def grade_code(q, code, runs):
         status = "REVIEW_REQUIRED"
     return val, status, note + ("；错误：" + a["stderr"][:160] if not ok else "")
 
+def normalized_content_sha(raw):
+    """Only normalize CRLF to LF: Windows Git checkout may change line endings.
+    All notebook content otherwise must match byte-for-byte.
+    """
+    return hashlib.sha256(raw.replace(b"\\r\\n", b"\\n")).hexdigest()
+
+
 def data_file(path):
     raw = path.read_bytes()
     nb = json.loads(raw.decode("utf-8-sig"))
-    return nb, hashlib.sha256(raw).hexdigest()
+    return nb, normalized_content_sha(raw)
 
 def identify_student(path):
     filename = path.name
@@ -453,7 +462,7 @@ def main():
             if source_file is not None and source_file.is_file():
                 try:
                     original_bytes = source_file.read_bytes()
-                    exact_hash = hashlib.sha256(original_bytes).hexdigest()
+                    exact_hash = normalized_content_sha(original_bytes)
                     if exact_hash == item["sha256"]:
                         mtime_ns = source_file.stat().st_mtime_ns
                         check = "ORIGINAL_MTIME_VERIFIED"
