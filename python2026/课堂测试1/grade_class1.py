@@ -297,7 +297,7 @@ def normalized_content_sha(raw):
     """Only normalize CRLF to LF: Windows Git checkout may change line endings.
     All notebook content otherwise must match byte-for-byte.
     """
-    return hashlib.sha256(raw.replace(b"\\r\\n", b"\\n")).hexdigest()
+    return hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def data_file(path):
