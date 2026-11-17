@@ -440,34 +440,86 @@ def main():
         with old_report.open(encoding="utf-8-sig", newline="") as f:
             for item in csv.DictReader(f):
                 name_map[item.get("文件夹", "")] = item.get("姓名", "")
+    # 原始 Windows 收卷文件夹可通过环境变量传入。Git checkout 的mtime不是学生原始修改时间。
+    original_root = os.environ.get("CLASS1_ORIGINAL_SOURCE_DIR", "").strip()
+    evidence = []
     summary = []
     for folder, choices in sorted(grouped.items()):
-        # 提交版本冲突需人工确认，临时按有效作答数最大版本供教师查阅，绝不静默覆盖
-        choice = sorted(choices, key=lambda x:(x["valid_answers"],x["score"]),reverse=True)[0]
-        student_id, id_source = identify_student(CLASS / choice["path"])
+        timestamps = []
+        for item in choices:
+            source_file = Path(original_root) / item["path"] if original_root else None
+            mtime_ns = None
+            check = "ORIGINAL_SOURCE_UNAVAILABLE"
+            if source_file is not None and source_file.is_file():
+                try:
+                    original_bytes = source_file.read_bytes()
+                    exact_hash = hashlib.sha256(original_bytes).hexdigest()
+                    if exact_hash == item["sha"]:
+                        mtime_ns = source_file.stat().st_mtime_ns
+                        check = "ORIGINAL_MTIME_VERIFIED"
+                    else:
+                        check = "SOURCE_CONTENT_HASH_MISMATCH"
+                except (OSError, ValueError) as exc:
+                    check = "SOURCE_READ_FAILED"
+            timestamps.append((item, mtime_ns, check))
+        if len(choices) == 1:
+            choice = choices[0]
+            choice_state = "SINGLE_FILE"
+        elif all(t is not None and state == "ORIGINAL_MTIME_VERIFIED" for _, t, state in timestamps):
+            latest = max(t for _, t, _ in timestamps)
+            found = [x for x, t, _ in timestamps if t == latest]
+            choice = found[0] if len(found) == 1 else None
+            choice_state = "LATEST_MTIME_VERIFIED" if choice else "LATEST_MTIME_TIE"
+        else:
+            choice = None
+            choice_state = "LATEST_UNVERIFIABLE"
+        for item, ts, check in timestamps:
+            evidence.append({
+                "folder": folder, "file": item["file"], "path": item["path"],
+                "sha256": item["sha"], "original_mtime_ns": ts if ts is not None else "",
+                "mtime_validation": check,
+                "selected": bool(choice and item["file"] == choice["file"]),
+                "selection_status": choice_state,
+                "all_versions": len(choices), "provisional_file_score": item["score"]
+            })
+        student_id, id_source = identify_student(CLASS / (choice["path"] if choice else choices[0]["path"]))
         issues = []
-        if len(choices)>1: issues.append("MULTIPLE_SUBMISSIONS")
-        if not student_id: issues.append("IDENTITY_MISSING")
-        if id_source == "NOTEBOOK_BODY": issues.append("IDENTITY_FROM_BODY")
-        if choice["review"]: issues.append("STRUCTURE_REVIEW")
-        if any(a["file"]==choice["file"] and a["folder"]==folder for a in audit):
+        if len(choices)>1:
+            issues.append("MULTIPLE_SUBMISSIONS")
+            if choice is None:
+                issues.append("LATEST_MTIME_NOT_VERIFIED")
+        if not student_id:
+            issues.append("IDENTITY_MISSING")
+        if id_source == "NOTEBOOK_BODY":
+            issues.append("IDENTITY_FROM_BODY")
+        if choice is not None and choice["review"]:
+            issues.append("STRUCTURE_REVIEW")
+        if choice is not None and any(a["file"]==choice["file"] and a["folder"]==folder for a in audit):
             issues.append("AUDIT_REVIEW")
-        summary.append({"folder":folder, "student_id_from_filename":student_id,
-                        "name_from_submission_report":name_map.get(folder,""),
-                        "selected_file":choice["file"], "id_source":id_source, "file_count":len(choices),
-                        "answered_questions":choice["valid_answers"],
-                        "provisional_score":choice["score"], "max_score":100,
-                        "status":"REVIEW_REQUIRED" if issues else "GRADED_PROVISIONAL",
-                        "issues":";".join(issues),
-                        **{f"Q{i+1}":v for i,v in enumerate(choice["q_scores"])}})
+        summary.append({
+            "folder":folder, "student_id_from_filename":student_id,
+            "name_from_submission_report":name_map.get(folder,""),
+            "selected_file":choice["file"] if choice else "",
+            "id_source":id_source, "file_count":len(choices),
+            "answered_questions":choice["valid_answers"] if choice else "",
+            "provisional_score":choice["score"] if choice else "", "max_score":100,
+            "status":"LATEST_UNVERIFIED" if choice is None else ("REVIEW_REQUIRED" if issues else "GRADED_PROVISIONAL"),
+            "issues":";".join(issues), "selection_status":choice_state,
+            **{f"Q{i+1}":(choice["q_scores"][i] if choice else "") for i in range(12)}
+        })
+    write_csv(OUT/"latest_selection_evidence.csv",evidence,
+              ["folder","file","path","sha256","original_mtime_ns",
+               "mtime_validation","selected","selection_status","all_versions","provisional_file_score"])
     cols=["folder","student_id_from_filename","name_from_submission_report",
-          "selected_file","id_source","file_count",
-          "answered_questions","provisional_score","max_score","status","issues"]+[
+          "selected_file","id_source","file_count","answered_questions",
+          "provisional_score","max_score","status","issues","selection_status"]+[
               f"Q{i}" for i in range(1,13)]
     write_csv(OUT/"grade_summary_provisional.csv",summary,cols)
     statuses=Counter(x["status"] for x in summary)
     # 审核未完成时，不创建 grade_summary_final.csv，防止草稿冒充正式成绩
-    vals=[x["provisional_score"] for x in summary]
+    vals=[float(x["provisional_score"]) for x in summary if x["provisional_score"] != ""]
+    if not vals:
+        raise SystemExit("No determinable submission scores")
     report=f"""# Python课堂小测一 · 班级1 · V6批改审计报告
 
 ## 运行与完整性
@@ -479,8 +531,10 @@ def main():
 - 复核标记：{len(audit)}
 - 文件解析阻塞：{sum(x['execution_status']=='FILE_BLOCKED' for x in executed)}
 - 重复文件夹：{sum(len(x)>1 for x in grouped.values())}
+- 已确认选卷文件数：{len(vals)} 人（含单文件夹，若有原始mtime可选出多文件夹）
+- 未能核实最新版：{sum(x["status"]=="LATEST_UNVERIFIED" for x in summary)} 人
 - 学生汇总：{len(summary)} 人；{dict(statuses)}
-- 草稿均分：{statistics.mean(vals):.2f}；中位数：{statistics.median(vals):.1f}（非正式）
+- **已核实选卷部分**的暂定均分：{statistics.mean(vals):.2f}；中位数：{statistics.median(vals):.1f}（非全班均分，不是正式成绩）
 - RUBRIC：rubric.lock.json；满分100分
 
 ## 评分依据
@@ -490,7 +544,7 @@ def main():
 不能仅根据关键词直接判满分。未把学生保存的旧输出作为证据。
 
 ## 待人工复核
-- 同文件夹多版本：所有版本保留，暂按有效作答数量选取，仅供复核。
+- 同文件夹多版本：必须依据原始收卷文件的真实修改时间(st_mtime_ns)，并逐一用SHA256核对原始字节。时间戳相等或无法取得时不选择；绝不按答案数、分数、文件名或Git上传时间冒充“最新版”。
 - 学号只在Notebook正文、文件名缺失：标身份待核。
 - Python代码含语法错、异常、非标准文件结构：需核对原始答案与评分点。
 - 自动结构审核并不替代教师对满分代码的核实。
@@ -505,7 +559,8 @@ def main():
     (OUT/"grading_audit_summary.md").write_text(report,encoding="utf-8")
     (OUT/"class_error_summary.md").write_text(report,encoding="utf-8")
     print(f"RESULT: files={len(files)} folders={len(folders)} detail={len(detail)} "
-          f"reviews={len(audit)} provisional_mean={statistics.mean(vals):.2f}",flush=True)
+          f"reviews={len(audit)} latest_unverified={sum(x['status']=='LATEST_UNVERIFIED' for x in summary)} "
+          f"mean_of_determinable={statistics.mean(vals):.2f}",flush=True)
 
 if __name__ == "__main__":
     main()
