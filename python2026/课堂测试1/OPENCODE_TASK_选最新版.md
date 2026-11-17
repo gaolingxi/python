@@ -11,14 +11,14 @@ TASK_ID: PYTHON_QUIZ1_CLASS1_SELECT_LATEST_MTIME
 
 当前公开GitHub中原卷来自2026-11-16一次批量提交；所有重复文件的Git提交时间相同，不代表学生原始修改时间。Jupyter Notebook内未保存可确认的修改时间，不能靠Git时间或文件名的`(2)`、`改`来猜。
 
-本轮已通过 Desktop Commander 在授权电脑验证原始收卷目录 `E:\班级 1` 存在，包含71个文件夹、95份 .ipynb。请使用这个已核实的本地路径（只读）：
+原始收卷目录过去位于 `E:\班级 1`，但2026-11-17检查时 **E盘未挂载**。不能用D盘Git检出副本的修改时间冒充原始收卷时间。只有E盘恢复后才执行：
 
 ```powershell
 $env:CLASS1_ORIGINAL_SOURCE_DIR = 'E:\班级 1'
 python 'python2026/课堂测试1/grade_class1.py'
 ```
 
-工作目录必须是当前 `gaolingxi/python` 仓库根目录，先 `git pull --ff-only`。脚本不修改学生原卷。**读取每个原始文件的 `st_mtime_ns`，先做SHA256原始字节比对**；原始文件缺失、内容不一致或时间相同时，标记 `LATEST_UNVERIFIED`，不得改为“分最高/最完整”。
+**当前课程项目的本地工作目录固定为 `D:\gaolingxi-python`，结果固定存放在 `D:\gaolingxi-python\python2026\课堂测试1\班级 1\批改结果\`。** 执行前先在该仓库 `git pull --ff-only`。脚本不修改学生原卷。**读取每个原始文件的 `st_mtime_ns`，先做SHA256原始字节比对**；原始文件缺失、内容不一致或时间相同时，标记 `LATEST_UNVERIFIED`，不得改为“分最高/最完整”。
 
 ## 输出与检查
 
@@ -36,6 +36,10 @@ python 'python2026/课堂测试1/grade_class1.py'
 
 ## 本次已核实的执行前提
 
-- 本地电脑已在线，OpenCode 1.19.0 可调用；原始目录 `E:\班级 1` 已验证实际存在。
+- 已在 `D:\gaolingxi-python` 建立本地GitHub工作副本，包含71个学生文件夹、95份Notebook。原始收卷目录 `E:\班级 1` 最近检查时未挂载，恢复前不得重选最新版。
 - 本次必须输出证据：每个重复提交的 `mtime_ns`、原始 SHA256 与 GitHub 文件一致性、所选最新卷，以及相对旧选卷规则的成绩变化。
 - 不要从文件名“改”“(2)”推断最新；原始文件mtime有相同值则标为待核。
+
+## 私人成绩迁移（2026-11-17）
+
+用户明确要求：本项目所有班级1成绩、复核报告和私有审计文件均保存到 `D:\gaolingxi-python\python2026\课堂测试1\班级 1\批改结果\`。过去结果位于 `E:\gaolingxi-python\python2026\课堂测试1\班级 1\批改结果\`，当前E盘离线，迁移未完成。源盘恢复后只读复制，不删除源文件，核对哈希及71行成绩记录、852行逐题复核记录。禁止将个人成绩推送到GitHub公开仓库。
