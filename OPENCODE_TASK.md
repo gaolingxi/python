@@ -1,4 +1,4 @@
-TASK_ID: PYTHON2026_QUIZ1_GRADE_RESULTS_TO_D_20261117_1933
+TASK_ID: PYTHON2026_QUIZ1_SINGLE_STUDENT_PROCESS_REVIEW_20261118
 TASK_VERSION: 1
 STATUS: READY
 EXECUTOR: OPENCODE
@@ -6,39 +6,44 @@ NEXT_ACTOR: OPENCODE
 AUTOMATION_READY: YES
 USER_REVIEW_REQUIRED: NO
 
-# Python 课堂小测一：只由 OpenCode 执行私人成绩迁移到 D 盘
+# 课堂小测一：单名学生逐题重新核分，重点检查解题过程被误扣
 
-2026-11-17 19:33｜执行器：ChatGPT｜当前阶段：向OpenCode交接
+2026-11-18 19:28｜执行器：ChatGPT｜当前阶段：交接单人核分
 
-## 用户明确指示
+## 用户意图及执行角色
 
-“你不要自己执行，你让opencode执行。”
+用户要求复核一位被认为成绩偏低的学生。**只有 OpenCode 负责本地执行、处理私有成绩和生成复核证据**。ChatGPT不直接运行本地成绩脚本。**本任务不要求公布成绩、不对整个班级重新批改。**
 
-**由 OpenCode 本地执行**；ChatGPT 仅发布任务及核验 OpenCode 回报，不能代替 OpenCode 运行迁移、批改或复制。不要扩展成新一轮全班批改。
+## 源及目标
 
-## 项目与文件夹
+- GitHub：`gaolingxi/python`，main；自动领取入口工作树：`D:\课程\python`。
+- 真正工作与私人成绩目标根目录：`D:\gaolingxi-python`。
+- 班级1原始Notebook：`D:\gaolingxi-python\python2026\课堂测试1\班级 1\205B-51\`，选卷以 `latest_selection_evidence.csv` 和已完成迁移时确认的最新版为准。
+- 私人评分目录：`D:\gaolingxi-python\python2026\课堂测试1\班级 1\批改结果\`。
+- 参考教师卷：`python2026/课堂测试1/课堂小测一_教师答案.ipynb`。
+- Skill：`gaolingxi/skill/assignment-grading/SKILL.md` V6 和本仓库 AGENTS.md。
+- 既有 `OPENCODE_REPORT.md` 显示上一迁移任务 DONE，71人成绩/852题复核记录已核验；不得重跑迁移，不得覆盖先前任务结论。
 
-- GitHub: https://github.com/gaolingxi/python，main
-- Orca 自动领取工作树为 `D:\课程\python`（只作任务入口，不是成绩最终交付位置）。
-- **唯一交付的目标工作树：`D:\gaolingxi-python`**。先核对这个路径是 `gaolingxi/python`，然后从此工作树工作。
-- **目标班级文件夹：`D:\gaolingxi-python\python2026\课堂测试1\班级 1\`**
-- **私人成绩目标文件夹：`D:\gaolingxi-python\python2026\课堂测试1\班级 1\批改结果\`**
-- 前次成绩源位置：`E:\gaolingxi-python\python2026\课堂测试1\班级 1\批改结果\`。
-- 已有迁移脚本：`D:\gaolingxi-python\python2026\课堂测试1\migrate_reviewed_results_E_to_D.ps1`。
-- 2026-11-17稍早本地检查发现当前机器E盘未挂载；这不是ChatGPT让你跳过执行的理由，而是要求你先核实源盘是否已恢复。**当前如确实未恢复，准确汇报 BLOCKED，不要称已完成。**
+## 只审查此人12道题并处理真实错误
 
-## OpenCode 执行步骤
+1. 安全拉取 main 并检查工作树、目标成绩文件存在且行数正确。读取 `grade_summary_reviewed.csv` 中 folder=205B-51 的实际成绩、逐题 Q1–Q12 及 `grading_detail_reviewed.csv` 同文件的原分、复核分、源代码与理由；与Notebook **逐单元原始内容**比对，确认文件未错选或题号错位。绝不能凭ChatGPT先前估算替代真实CSV。
+2. 审核Q1–Q4选择、Q5–Q6填空语义等价，尤其字符串值使用中文弯引号是否已给分。
+3. Q7交换：学生有交换表达式，但键盘输入方式存在问题、缺少交换前打印。**区分正确交换核心过程与输入/展示缺陷**，不能把实际没交换的代码判全对，也不能因为输出不合格式把交换思路清零。
+4. Q8单利：核对本金×利率×期限计算真实正确；总额表达式、字符串+数字会导致TypeError。**不能仅因打印报错而否定正确的利息公式；同时识别总额是否真正有正确数值运算**。
+5. Q9：逐项验证所需 //, %, ** 操作的真实操作数和结果；用表达式打印不算硬编码。
+6. Q10：区分真正的 `.format()` 格式化调用与只把内置 `format` 函数对象当print参数（后者没有完成格式化算法），不得凭“出现format字样”给满分。
+7. Q11：区分真实的数值转换与正确的 `>80` 数值比较；比较发生在字符串拼接之后时不是正确程序，给予可验证步骤的部分分。
+8. Q12：检查真实字符串索引/切片，若过程正确给满分。
+9. 执行前先重读教师“只要过程正确就判对”的最新口径；**核心计算/交换/索引的过程正确可给满分，轻微输出格式/非核心笔误不扣；核心语义错误仍给相应部分分**。严格按同一规则，避免为提高个人成绩随意加分。
+10. 写私有文件 `批改结果\单人过程复核_205B-51.md`：12题旧分、建议新分、源代码摘录、逐题证据和问题、总分变化、结论。若有确定误扣，保留原CSV备份后调整**仅该名学生的**私有成绩汇总和明细，确保12题和总分一致；若有争议，先仅给建议分并标 REVIEW_REQUIRED，不擅自最终化。其他70人分数和原卷不允许变更。
+11. GitHub仅更新 `OPENCODE_REPORT.md`，填写相同 TASK_ID、`STATUS: DONE` 或 `BLOCKED`、已核查题数及流程证据；**不提交姓名、学号、具体个人分数、答题源代码或私有成绩文件**。若OpenCode需要授权则如实报告BLOCKED，不要宣称完成。
 
-1. 在D盘工作树检查远端/分支与工作树安全状态，安全同步 `origin/main`，读取 `AGENTS.md`、`python2026/课堂测试1/OPENCODE_TASK_选最新版.md`、`python2026/课堂测试1/migrate_reviewed_results_E_to_D.ps1`。
-2. 确认 D 盘已有71个学生文件夹和95份 `.ipynb` 原始答卷。**不要修改任意学生原始 Notebook。**
-3. 检查 E 盘源目录是否能访问（不猜文件路径）；若存在，**由你执行**仓库内已有的只读迁移脚本，把所有复核后私人成绩及审计文件复制到D盘。
-4. 核对完整性：`grade_summary_reviewed.csv` **71行**、`grading_detail_reviewed.csv` **852行**、`question_tamper_audit.csv` **1140行**，全部迁移文件 SHA256 与源一致；如源文件缺失或哈希不符，应 BLOCKED，不能伪造。
-5. 如果 E 盘仍离线，在目标 `批改结果` 文件夹保留既有 `迁移状态_等待E盘.txt`，不要用旧初评分数冒充复核后分数，也不要用Git检出时间重新决定重复提交的最新版。
-6. 在 GitHub 仓库根目录写不含任何姓名、学号、个人成绩的 `OPENCODE_REPORT.md`，带相同 TASK_ID、`STATUS: DONE` 或 `STATUS: BLOCKED`、原因、执行者、执行时间、证据统计与目标文件夹核验状态。安全推送公开仓库的**仅此非敏感状态报告**。不得提交/推送个人成绩、源代码答案或个人可识别记录。
-7. 报告清晰区分“已下发任务”“开始执行”“D盘迁移完成”。**只有文件实际存在且验收通过才能 DONE**。不得自行重新判分、调整均分或改变评分口径。
+## 结果交接
 
-完成时间：待OpenCode运行填写
-当前阶段：私人成绩迁移到D盘
+完成后在当前 OpenCode Chat 给用户明示每道题旧分与建议分，指出是否偏低、核心问题在哪，以及私有CSV是否实际更改。保留过程审计，禁止只给分数无解释。
+
+完成时间：等待OpenCode回报
+当前阶段：单名学生过程复核
 当前状态：READY
-下一步：OpenCode通过自动领取并执行
-你现在要做：无，任务已经交给OpenCode领取
+下一步：OpenCode领取核分并回写匿名报告
+你现在要做：无需重复下发任务
