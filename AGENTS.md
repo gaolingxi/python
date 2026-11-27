@@ -1,5 +1,8 @@
 # AGENTS.md
 
+## 2026-11-27：Gemini—OpenCode 阶段协作（替代旧逐任务审核）
+先读 [中央阶段协议](https://github.com/gaolingxi/research-project-orchestrator/blob/main/STAGE_COLLABORATION.md) 和 [STAGE_PLAN.md](STAGE_PLAN.md)。Gemini 负责阶段内多轮计划、审阅与下一步，OpenCode 本地执行，ChatGPT 只审核阶段报告或重大阻塞。保留所有现有任务、发布门槛、来源/教学/隐私规则和去重；旧 NEXT_ACTOR=ChatGPT 可作为历史兼容字段，不能自动触发逐轮审核。安全交接后，OpenCode 使用获准脱敏汇总与 Gemini CLI 讨论，记录真实 GEMINI_TASK/REPORT；无真实回执则等待。Gemini 决定 NEXT_ROUND / STAGE_READY / ESCALATE，OpenCode 校验范围再执行；后两者提交 STAGE_REPORT.md，等待 ChatGPT STAGE_REVIEW.md 的 PASS/REVISE。禁止向外部模型传学生身份、成绩、教师答案、受限文本或未经授权的资料；不恢复已取消任务。单固定终端、不新建窗口。
+
 ## 统一时间戳规则（所有项目 / 最高优先级）
 
 - ChatGPT、OpenCode、PI 的每一条用户可见回复、状态回执、TASK/REPORT/STATE 交接说明，第一行必须写：`YYYY-MM-DD HH:MM｜执行器：ChatGPT / OpenCode / PI｜当前阶段：<阶段>`。
